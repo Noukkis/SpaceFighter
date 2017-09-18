@@ -29,7 +29,7 @@ public class Ship extends Polygon {
         setFill(c);
     }
     
-    public Ship(Color c, int x, int y, int rotate) {
+    public Ship(Color c, double x, double y, double rotate) {
         this(c);
         setLayoutX(x);
         setLayoutY(y);

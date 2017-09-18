@@ -7,13 +7,14 @@ package spaceFighter;
 
 import client.Nouklient;
 import client.Nouklient.PluginInstructionReceivedEvent;
-import client.help.Helper;
 import spaceFighter.beans.Bullet;
 import spaceFighter.beans.Ship;
 import helpers.Geometry;
 import java.net.URL;
+import java.nio.ByteBuffer;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.ResourceBundle;
 import javafx.animation.KeyFrame;
@@ -149,6 +150,12 @@ public class ViewCtrl implements Initializable {
                 lost.add(bullet);
             }
         }
+
+        synchronized (client) {
+            for (Ship sp : ships.values()) {
+                sp.move();
+            }
+        }
         pane.getChildren().removeAll(lost);
         bullets.removeAll(lost);
         lost.clear();
@@ -167,27 +174,31 @@ public class ViewCtrl implements Initializable {
 
         ship.setLayoutX(Geometry.getCenterX(pane) - Geometry.getCenterX(ship));
         ship.setLayoutY(Geometry.getCenterY(pane) - Geometry.getCenterY(ship));
-        
+
         client.addListener((event) -> {
-            if(event instanceof Nouklient.PluginInstructionReceivedEvent) {
-                String[] arr = ((PluginInstructionReceivedEvent) event).getInstruction().split("::");
-                int[] infos = Helper.stringToIntArray(arr[1]);
-                int x = (int) (infos[0] - ship.getX() + ship.getLayoutX());
-                int y = (int) (infos[1] - ship.getY() + ship.getLayoutY());
-                int rotate = infos[2];
-                if(ships.containsKey(arr[0])) {
-                    Ship sp = ships.get(arr[0]);
-                    sp.setLayoutX(x);
-                    sp.setLayoutY(y);
-                    sp.setRotate(rotate);
-                } else {
-                    Ship sp = new Ship(Color.RED, x, y, rotate);
-                    ships.put(arr[0], sp);
-                    Platform.runLater(() -> pane.getChildren().add(sp));
+            if (event instanceof Nouklient.PluginInstructionReceivedEvent) {
+                synchronized (client) {
+                    String[] arr = ((PluginInstructionReceivedEvent) event).getInstruction().split("::");
+                    double[] infos = toDouble(Base64.getDecoder().decode(arr[1]));
+                    double x = (infos[0] - ship.getX() + ship.getLayoutX());
+                    double y = (infos[1] - ship.getY() + ship.getLayoutY());
+                    double rotate = infos[2];
+                    if (ships.containsKey(arr[0])) {
+                        Ship sp = ships.get(arr[0]);
+                        sp.setLayoutX(x);
+                        sp.setLayoutY(y);
+                        sp.setRotate(rotate);
+                        sp.setMoveX(infos[3]);
+                        sp.setMoveX(infos[4]);
+                    } else {
+                        Ship sp = new Ship(Color.RED, x, y, rotate);
+                        ships.put(arr[0], sp);
+                        Platform.runLater(() -> pane.getChildren().add(sp));
+                    }
                 }
             }
         });
-        
+
         Timeline timeLine = new Timeline(new KeyFrame(Duration.millis(10), (ActionEvent) -> actualize()));
         timeLine.setCycleCount(Timeline.INDEFINITE);
         timeLine.play();
@@ -200,7 +211,24 @@ public class ViewCtrl implements Initializable {
     }
 
     private void networkActu() {
-        int[] infos = {(int) ship.getX(), (int) ship.getY(), (int) ship.getRotate()};
-        client.sendInstruction(Helper.intArrayToString(infos));
+        double[] infos = {ship.getX(), ship.getY(), ship.getRotate(), ship.getMoveX(), ship.getMoveY()};
+        client.sendInstruction(Base64.getEncoder().encodeToString(toByteArray(infos)));
+    }
+
+    public static byte[] toByteArray(double[] values) {
+        ByteBuffer bb = ByteBuffer.allocate(values.length * 8);
+        for (double d : values) {
+            bb.putDouble(d);
+        }
+        return bb.array();
+    }
+
+    public static double[] toDouble(byte[] bytes) {
+        ByteBuffer bb = ByteBuffer.wrap(bytes);
+        double[] doubles = new double[bytes.length / 8];
+        for (int i = 0; i < doubles.length; i++) {
+            doubles[i] = bb.getDouble();
+        }
+        return doubles;
     }
 }
