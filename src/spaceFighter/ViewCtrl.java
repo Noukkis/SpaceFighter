@@ -34,7 +34,6 @@ import javafx.scene.layout.BackgroundRepeat;
 import javafx.scene.layout.BackgroundSize;
 import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Rectangle;
 import javafx.util.Duration;
 
 /**
@@ -57,7 +56,6 @@ public class ViewCtrl implements Initializable {
     Nouklient client;
 
     private boolean playable;
-    private Rectangle r;
 
     private ArrayList<Bullet> bullets;
     private HashMap<String, Ship> ships;
@@ -107,9 +105,6 @@ public class ViewCtrl implements Initializable {
     @Override
     public void initialize(URL url, ResourceBundle rb) {
         bgImg = new Image("spaceFighter/resources/bg.png");
-        r = new Rectangle(0, 0, 50, 50);
-        r.setFill(Color.RED);
-        pane.getChildren().add(r);
         playable = true;
         lost = new ArrayList();
         ships = new HashMap<>();
@@ -128,11 +123,8 @@ public class ViewCtrl implements Initializable {
         String speed = new DecimalFormat("0.00").format(ship.getSpeed());
         lblVitesse.setText(speed + "km/s");
         ship.move();
-        r.setLayoutX(r.getLayoutX() - ship.getMoveX());
-        r.setLayoutY(r.getLayoutY() - ship.getMoveY());
         bgPane.setLayoutX(bgPane.getLayoutX() - ship.getMoveX() / 1.1);
         bgPane.setLayoutY(bgPane.getLayoutY() - ship.getMoveY() / 1.1);
-        Scene s = bgPane.getScene();
         if (bgPane.getLayoutX() > 0) {
             bgPane.setLayoutX(-2 * bgImg.getWidth() - ship.getMoveX() / 1.1);
         }
@@ -154,6 +146,10 @@ public class ViewCtrl implements Initializable {
         synchronized (client) {
             for (Ship sp : ships.values()) {
                 sp.move();
+                double x = (sp.getX() - ship.getX() + ship.getLayoutX());
+                double y = (sp.getY() - ship.getY() + ship.getLayoutY());
+                sp.setLayoutX(x);
+                sp.setLayoutY(y);
             }
         }
         pane.getChildren().removeAll(lost);
